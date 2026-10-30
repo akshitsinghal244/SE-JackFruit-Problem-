@@ -1,0 +1,2 @@
+-r common.txt
+xgboost>=2.0
