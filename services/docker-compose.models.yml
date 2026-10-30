@@ -1,0 +1,39 @@
+# The three model microservices (tier 3 of the SADS deployment view, section 2.5).
+# Merge these into the team's main docker-compose.yml, or run alone for testing:
+#
+#   echo "SERVICE_API_KEY=$(python -c 'import secrets;print(secrets.token_hex(32))')" > .env
+#   docker compose -f docker-compose.models.yml up --build
+#
+# * No `ports:` -> unreachable from outside the docker network (SEC-05).
+#   Only the web server (on the same `internal` network) calls http://ml:8000 etc.
+# * Artifacts mounted read-only (SADS 2.8 "read-only model volumes").
+# * The web server must send header  X-API-Key: ${SERVICE_API_KEY}
+
+services:
+  ml:
+    build: { context: ., dockerfile: ml_service/Dockerfile }
+    environment:
+      SERVICE_API_KEY: ${SERVICE_API_KEY:?set SERVICE_API_KEY in .env}
+    volumes: ["./artifacts/ml:/models:ro"]
+    networks: [internal]
+    restart: unless-stopped
+
+  dl:
+    build: { context: ., dockerfile: dl_service/Dockerfile }
+    environment:
+      SERVICE_API_KEY: ${SERVICE_API_KEY:?set SERVICE_API_KEY in .env}
+    volumes: ["./artifacts/dl:/models:ro"]
+    networks: [internal]
+    restart: unless-stopped
+
+  qml:
+    build: { context: ., dockerfile: qml_service/Dockerfile }
+    environment:
+      SERVICE_API_KEY: ${SERVICE_API_KEY:?set SERVICE_API_KEY in .env}
+    volumes: ["./artifacts/qml:/models:ro"]
+    networks: [internal]
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
