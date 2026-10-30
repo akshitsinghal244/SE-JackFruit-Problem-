@@ -1,0 +1,38 @@
+# secrets / local
+.env
+certs/
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+.ruff_cache/
+*.db
+# node
+node_modules/
+client/dist/
+# data + trained models (large; shared via a private drive / volume, never committed)
+services/data/*.csv
+services/data/*.parquet
+services/artifacts/*/
+/data/
+*.pkl
+*.joblib
+*.pt
+# load-test raw output
+docs/perf/*_stats*.csv
+docs/perf/*_failures.csv
+docs/perf/*_exceptions.csv
+
+# editors / OS junk (Windows + macOS team)
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+# misc build / test output
+*.log
+htmlcov/
+coverage.xml
+.mypy_cache/

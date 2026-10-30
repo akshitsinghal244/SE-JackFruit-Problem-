@@ -1,0 +1,9 @@
+# Normalise line endings so Windows and macOS contributors produce identical diffs.
+* text=auto
+# These must stay LF or they break inside Linux containers / on macOS.
+*.sh text eol=lf
+Dockerfile* text eol=lf
+*.conf text eol=lf
+*.template text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
