@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ml, namespace: rdcp, labels: { app: ml, tier: model } }
+spec:
+  replicas: 2                                   # two pods per model service
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: ml } }
+  template:
+    metadata: { labels: { app: ml, tier: model } }
+    spec:
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: ml } } }
+      securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+      containers:
+        - name: ml
+          image: rdcp-ml:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: SERVICE_API_KEY
+              valueFrom: { secretKeyRef: { name: rdcp-secrets, key: SERVICE_API_KEY } }
+          # trained artifacts are mounted read-only (never baked into the image). On kind: extraMounts in kind-cluster.yaml
+          volumeMounts: [{ name: artifacts, mountPath: /models, readOnly: true }]
+          # /health needs the X-API-Key header, so probes run inside the container
+          readinessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 30
+          resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "1", memory: 1Gi } }
+      volumes:
+        - { name: artifacts, hostPath: { path: /artifacts/ml, type: DirectoryOrCreate } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ml, namespace: rdcp }
+spec:
+  selector: { app: ml }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: ml, namespace: rdcp }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: ml } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: dl, namespace: rdcp, labels: { app: dl, tier: model } }
+spec:
+  replicas: 2                                   # two pods per model service
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: dl } }
+  template:
+    metadata: { labels: { app: dl, tier: model } }
+    spec:
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: dl } } }
+      securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+      containers:
+        - name: dl
+          image: rdcp-dl:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: SERVICE_API_KEY
+              valueFrom: { secretKeyRef: { name: rdcp-secrets, key: SERVICE_API_KEY } }
+          # trained artifacts are mounted read-only (never baked into the image). On kind: extraMounts in kind-cluster.yaml
+          volumeMounts: [{ name: artifacts, mountPath: /models, readOnly: true }]
+          # /health needs the X-API-Key header, so probes run inside the container
+          readinessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 30
+          resources: { requests: { cpu: 250m, memory: 768Mi }, limits: { cpu: "1", memory: 1536Mi } }
+      volumes:
+        - { name: artifacts, hostPath: { path: /artifacts/dl, type: DirectoryOrCreate } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: dl, namespace: rdcp }
+spec:
+  selector: { app: dl }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: dl, namespace: rdcp }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: dl } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: qml, namespace: rdcp, labels: { app: qml, tier: model } }
+spec:
+  replicas: 2                                   # two pods per model service
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: qml } }
+  template:
+    metadata: { labels: { app: qml, tier: model } }
+    spec:
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: qml } } }
+      securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+      containers:
+        - name: qml
+          image: rdcp-qml:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: SERVICE_API_KEY
+              valueFrom: { secretKeyRef: { name: rdcp-secrets, key: SERVICE_API_KEY } }
+          # trained artifacts are mounted read-only (never baked into the image). On kind: extraMounts in kind-cluster.yaml
+          volumeMounts: [{ name: artifacts, mountPath: /models, readOnly: true }]
+          # /health needs the X-API-Key header, so probes run inside the container
+          readinessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: { command: ["python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"] }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 30
+          resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "1", memory: 1Gi } }
+      volumes:
+        - { name: artifacts, hostPath: { path: /artifacts/qml, type: DirectoryOrCreate } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: qml, namespace: rdcp }
+spec:
+  selector: { app: qml }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: qml, namespace: rdcp }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: qml } }

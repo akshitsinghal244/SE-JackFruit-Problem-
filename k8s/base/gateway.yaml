@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: gateway, namespace: rdcp, labels: { app: gateway, tier: app } }
+spec:
+  replicas: 3                                   # stateless: JWT + shared Postgres + shared Redis counters
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: gateway } }
+  template:
+    metadata: { labels: { app: gateway, tier: app } }
+    spec:
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: gateway } } }
+      securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+      containers:
+        - name: gateway
+          image: rdcp-gateway:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          envFrom: [{ configMapRef: { name: rdcp-config } }]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: rdcp-secrets, key: POSTGRES_PASSWORD } }
+            - name: DATABASE_URL            # must come after POSTGRES_PASSWORD to expand it
+              value: "postgresql+psycopg2://rdcp:$(POSTGRES_PASSWORD)@postgres:5432/rdcp"
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: rdcp-secrets, key: JWT_SECRET } } }
+            - { name: SERVICE_API_KEY, valueFrom: { secretKeyRef: { name: rdcp-secrets, key: SERVICE_API_KEY } } }
+            - { name: ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: rdcp-secrets, key: ADMIN_PASSWORD } } }
+          startupProbe: { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 3, failureThreshold: 40 }
+          readinessProbe: { httpGet: { path: /readyz, port: 8000 }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 160Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: gateway, namespace: rdcp }
+spec:
+  selector: { app: gateway }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: gateway, namespace: rdcp }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: gateway }
+  minReplicas: 3
+  maxReplicas: 8
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } } }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: gateway, namespace: rdcp }
+spec:
+  minAvailable: 2
+  selector: { matchLabels: { app: gateway } }

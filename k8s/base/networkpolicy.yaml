@@ -1,0 +1,33 @@
+# SEC-05 in Kubernetes: nothing can talk to anything unless allowed below. Needs a CNI that enforces policies (Calico, Cilium).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress, namespace: rdcp }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-controller-to-client, namespace: rdcp }
+spec:
+  podSelector: { matchLabels: { app: client } }
+  ingress: [{ from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }], ports: [{ port: 8080 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-client-to-gateway, namespace: rdcp }
+spec:
+  podSelector: { matchLabels: { app: gateway } }
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: client } } }], ports: [{ port: 8000 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-gateway-to-models, namespace: rdcp }
+spec:
+  podSelector: { matchLabels: { tier: model } }
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: gateway } } }], ports: [{ port: 8000 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-gateway-to-data, namespace: rdcp }
+spec:
+  podSelector: { matchLabels: { tier: data } }
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: gateway } } }], ports: [{ port: 5432 }, { port: 6379 }] }]

@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rdcp
+  namespace: rdcp
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"      # enable together with the tls block (SEC-02)
+spec:
+  ingressClassName: nginx
+  # tls: [{ hosts: [rdcp.local], secretName: rdcp-tls }]     # kubectl create secret tls rdcp-tls --cert=... --key=...
+  rules:
+    - host: rdcp.local
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: client, port: { number: 80 } } } }]
