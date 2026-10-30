@@ -1,0 +1,93 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+
+jobs:
+  gateway:
+    name: gateway (lint + tests + coverage)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: gateway } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip, cache-dependency-path: gateway/requirements-dev.txt }
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: pytest            # coverage >= 70% enforced in pyproject.toml (NFR-M2)
+
+  services:
+    name: services ml/dl/qml (lint + tests + coverage)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: services } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip, cache-dependency-path: "services/requirements/*.txt" }
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements/dev.txt pytest-cov ruff
+      - run: ruff check .
+      - run: pytest -q --cov=shared --cov=ml_service --cov=dl_service --cov=qml_service --cov-report=term-missing --cov-fail-under=70
+
+  mock-models:
+    name: mock-models (lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ruff && ruff check mock-models
+
+  client:
+    name: client (lint + build)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: client } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: client/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  docker:
+    name: docker build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: client,  context: client,   file: client/Dockerfile }
+          - { name: gateway, context: gateway,  file: gateway/Dockerfile }
+          - { name: ml,      context: services, file: services/ml_service/Dockerfile }
+          - { name: dl,      context: services, file: services/dl_service/Dockerfile }
+          - { name: qml,     context: services, file: services/qml_service/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  k8s:
+    name: kubernetes manifests (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: kubectl dry-run
+        run: |
+          kubectl kustomize k8s/base > /tmp/base.yaml && kubectl apply --dry-run=client --validate=false -f /tmp/base.yaml
+          kubectl kustomize k8s/overlays/mock > /tmp/mock.yaml && kubectl apply --dry-run=client --validate=false -f /tmp/mock.yaml
+          kubectl apply --dry-run=client --validate=false -f k8s/secret.example.yaml
+
+  compose:
+    name: docker compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose config -q && docker compose -f docker-compose.yml -f docker-compose.mock.yml config -q
