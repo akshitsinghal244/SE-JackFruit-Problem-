@@ -1,0 +1,82 @@
+# Whole system:   ./scripts/gen-cert.sh && cp .env.example .env && docker compose up -d --build --wait   ->  https://localhost
+# Real models need trained files in services/artifacts/{ml,dl,qml}. No models yet?  add the mock override:
+#   docker compose -f docker-compose.yml -f docker-compose.mock.yml up -d --build --wait
+#
+# Networks (SEC-05): `public` = edge, client, gateway.  `internal` (no outside access) = gateway, ml, dl, qml, db, redis.
+# Only the gateway joins both. ml/dl/qml/db/redis publish NO host ports.
+x-model: &model
+  restart: unless-stopped
+  networks: [internal]
+  environment: &model-env
+    SERVICE_API_KEY: ${SERVICE_API_KEY:?set it in .env}
+  healthcheck: &model-health
+    test: ["CMD", "python", "-c", "import os,urllib.request as u;u.urlopen(u.Request('http://localhost:8000/health',headers={'X-API-Key':os.environ['SERVICE_API_KEY']}),timeout=3)"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 20s
+
+services:
+  edge:
+    image: nginx:1.27-alpine
+    ports: ["80:80", "443:443"]
+    volumes: ["./nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro", "./certs:/certs:ro"]
+    depends_on: { client: { condition: service_healthy }, gateway: { condition: service_healthy } }
+    networks: [public]
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    environment: { API_UPSTREAM: "gateway:8000" }
+    networks: [public]
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/nginx-health"], interval: 10s, timeout: 3s, retries: 6 }
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    environment:
+      DATABASE_URL: postgresql+psycopg2://rdcp:${POSTGRES_PASSWORD:?set it in .env}@db:5432/rdcp
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set it in .env}
+      SERVICE_API_KEY: ${SERVICE_API_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ML_URL: http://ml:8000
+      DL_URL: http://dl:8000
+      QML_URL: http://qml:8000
+      CORS_ORIGINS: https://localhost
+    depends_on: { db: { condition: service_healthy }, redis: { condition: service_healthy } }   # model services are NOT required to start (FR-14)
+    networks: [public, internal]
+    healthcheck: { test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://localhost:8000/readyz',timeout=3)"], interval: 10s, timeout: 5s, retries: 12, start_period: 10s }
+    restart: unless-stopped
+
+  ml:
+    <<: *model
+    build: { context: ./services, dockerfile: ml_service/Dockerfile }
+    volumes: ["./services/artifacts/ml:/models:ro"]
+  dl:
+    <<: *model
+    build: { context: ./services, dockerfile: dl_service/Dockerfile }
+    volumes: ["./services/artifacts/dl:/models:ro"]
+  qml:
+    <<: *model
+    build: { context: ./services, dockerfile: qml_service/Dockerfile }
+    volumes: ["./services/artifacts/qml:/models:ro"]
+
+  db:
+    image: postgres:15-alpine
+    environment: { POSTGRES_DB: rdcp, POSTGRES_USER: rdcp, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}" }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [internal]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U rdcp -d rdcp"], interval: 5s, timeout: 3s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks: [internal]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+
+networks:
+  public: {}
+  internal: { internal: true }
+volumes:
+  pgdata: {}
