@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 180
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["B008", "B905", "B904"]   # Depends() defaults are the FastAPI pattern; zip over equal-length lists; raise-from not needed for ApiError
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "E402", "F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=70"     # NFR-M2: coverage >= 70% enforced
