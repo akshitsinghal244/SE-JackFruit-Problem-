@@ -4,14 +4,15 @@ Held-out test = last 3 months of the data. Baseline = "tomorrow has yesterday's 
 
 | Model | Algorithm | Version | Test accuracy | Macro-F1 | Baseline acc. | n_train / n_test | NFR-A1 target | Result |
 |---|---|---|---|---|---|---|---|---|
-| ML | (not trained) | | | | | | | |
-| DL | (not trained) | | | | | | | |
-| QML | (not trained) | | | | | | | |
+| ML | XGBClassifier | xgb-20261112 | 60.01% | 0.4525 | 50.43% | 863500 / 46000 | 70% | SHORTFALL |
+| DL | MLP + store/item embeddings | mlp-20261112 | 61.6% | 0.5539 | 50.43% | 817500 / 46000 | 70% | SHORTFALL |
+| QML | VQC (4 qubits, 3 StronglyEntangling layers, default.qubit simulator) | vqc4q-20261112 | 43.2% | 0.3959 | 51.3% | 2000 / 1000 | 60% | SHORTFALL |
 
 ## Notes
-- ML: no metadata.json yet - train it (see services/README.md).
-- DL: no metadata.json yet - train it (see services/README.md).
-- QML: no metadata.json yet - train it (see services/README.md).
+- ML: 60.01% < 70% -> record as a deviation (TBD-1) in docs/deviations.md.
+- DL: 61.6% < 70% -> record as a deviation (TBD-1) in docs/deviations.md.
+- QML: 43.2% < 60% -> record as a deviation (TBD-1) in docs/deviations.md.
+- QML: VQC (4 qubits, 3 StronglyEntangling layers, default.qubit simulator); readout: softmax(scale * <Z_q> + bias) for qubits 0,1,2 = Low, Medium, High; PCA variance kept: 0.8288 (TBD-2).
 
 ## Final algorithm choices (TBD-3)
 - ML: RF vs XGBoost -> see "Algorithm" column (best on validation).

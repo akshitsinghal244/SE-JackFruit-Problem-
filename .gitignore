@@ -16,7 +16,7 @@ client/dist/
 services/data/*.csv
 services/data/*.parquet
 services/artifacts/*/
-/data/
+data/
 *.pkl
 *.joblib
 *.pt
@@ -24,15 +24,3 @@ services/artifacts/*/
 docs/perf/*_stats*.csv
 docs/perf/*_failures.csv
 docs/perf/*_exceptions.csv
-
-# editors / OS junk (Windows + macOS team)
-.DS_Store
-Thumbs.db
-desktop.ini
-.idea/
-.vscode/
-# misc build / test output
-*.log
-htmlcov/
-coverage.xml
-.mypy_cache/

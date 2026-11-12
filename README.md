@@ -8,7 +8,7 @@ services/      ML / DL / QML model services (+ training code, tests)            
 k8s/           Kubernetes manifests + deploy scripts     nginx/ scripts/ loadtest/    TLS edge, helpers, Locust
 docs/          user guide, deviations, OpenAPI, perf, demo      .github/   CI, CD, PR template, CODEOWNERS
 ```
-Details: `docs/architecture.md`, `docs/plan-status.md` (sprint-plan coverage), `services/README.md` (training the models).
+Details: `docs/architecture.md`, `docs/plan-status.md` (sprint-plan coverage), `docs/deviations.md` (SRS/SADS/STP deviations), `docs/testing/test-report.md` (STP TC-01…TC-20 -> scripts), `services/README.md` (training the models).
 
 ## 1. Run with Docker Compose
 ```bash
@@ -36,15 +36,19 @@ NetworkPolicies need a CNI that enforces them (Calico/Cilium).
 
 ## 3. Develop and test
 ```bash
-cd gateway  && pip install -r requirements-dev.txt && ruff check . && pytest        # 18 tests, coverage >= 70 % enforced
+python scripts/run_all_tests.py                     # every automated suite (gateway + services + client)
+cd gateway  && pip install -r requirements-dev.txt && ruff check . && pytest        # 58 tests, coverage >= 70 % enforced
 cd services && pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements/dev.txt && pytest -q
-cd client   && npm ci && npm run lint && npm run build && npm run dev              # http://localhost:5173 (proxies /api to :8000)
+cd client   && npm ci && npm run lint && npm test && npm run build                  # 53 Vitest tests
 python scripts/export_openapi.py                                                    # refresh docs/openapi.json
 ```
+Test-case report (STP TC-01…TC-20 -> script): `docs/testing/test-report.md`.
+Model accuracy vs NFR-A1 and the accepted deviations: `docs/models.md` + `docs/deviations.md`.
+Docker-level smoke test (startup, prediction, partial failure, isolation): `python scripts/test_stack_smoke.py`.
 Local without Docker: run mock models on 8001-8003 (`MODEL_NAME=ml SERVICE_API_KEY=dev-key uvicorn app:app --port 8001` in `mock-models/`, same for dl/qml) and the gateway with `RDCP_DEV=1 SERVICE_API_KEY=dev-key uvicorn app.main:app` in `gateway/` (SQLite).
 
 ## 4. CI / CD
-- **CI** (`.github/workflows/ci.yml`, every PR and push to main): lint + tests + coverage for gateway and services, client lint + build, docker build of all 5 images, Kubernetes dry-run, compose config.
+- **CI** (`.github/workflows/ci.yml`, every PR and push to main): lint + tests + coverage for gateway and services, client lint + **unit tests** + build, a job that runs every suite through `scripts/run_all_tests.py`, docker build of all 5 images, Kubernetes dry-run, compose config.
 - **CD** (`cd.yml`): after CI is green on main and on `v*` tags, pushes `<user>/rdcp-{client,gateway,ml,dl,qml}:<sha|latest|tag>` to DockerHub. Needs secrets `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
 - Branch protection: `scripts/protect-main.sh <owner/repo>`; freeze at release: add `--freeze`.
 
