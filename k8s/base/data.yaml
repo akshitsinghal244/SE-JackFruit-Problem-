@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: postgres, namespace: rdcp }
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata: { labels: { app: postgres, tier: data } }
+    spec:
+      securityContext: { fsGroup: 70 }
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, value: rdcp }
+            - { name: POSTGRES_USER, value: rdcp }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: rdcp-secrets, key: POSTGRES_PASSWORD } }
+          readinessProbe: { exec: { command: ["pg_isready", "-U", "rdcp", "-d", "rdcp"] }, periodSeconds: 5 }
+          livenessProbe: { exec: { command: ["pg_isready", "-U", "rdcp", "-d", "rdcp"] }, periodSeconds: 20, failureThreshold: 6 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: ["ReadWriteOnce"], resources: { requests: { storage: 1Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: postgres, namespace: rdcp }
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis, namespace: rdcp }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis, tier: data } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["--save", "", "--appendonly", "no"]     # counters only, nothing to persist
+          ports: [{ containerPort: 6379 }]
+          readinessProbe: { exec: { command: ["redis-cli", "ping"] }, periodSeconds: 5 }
+          resources: { requests: { cpu: 50m, memory: 32Mi }, limits: { cpu: 200m, memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: rdcp }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: client, namespace: rdcp, labels: { app: client, tier: web } }
+spec:
+  replicas: 2
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: client } }
+  template:
+    metadata: { labels: { app: client, tier: web } }
+    spec:
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: client } } }
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: client
+          image: rdcp-client:1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env: [{ name: API_UPSTREAM, value: "gateway:8000" }]
+          readinessProbe: { httpGet: { path: /nginx-health, port: 8080 }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /nginx-health, port: 8080 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 200m, memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: client, namespace: rdcp }
+spec:
+  selector: { app: client }
+  ports: [{ port: 80, targetPort: 8080 }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: client, namespace: rdcp }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: client } }

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: rdcp-config, namespace: rdcp }
+data:
+  ML_URL: "http://ml:8000"
+  DL_URL: "http://dl:8000"
+  QML_URL: "http://qml:8000"
+  SERVICE_TIMEOUT: "8"
+  REDIS_URL: "redis://redis:6379/0"      # shared rate-limit counters across all gateway pods
+  RATE_LIMIT_PER_MIN: "60"
+  CORS_ORIGINS: "http://rdcp.local"
+  ADMIN_EMAIL: "admin@rdcp.local"
+# Secret `rdcp-secrets` (JWT_SECRET, SERVICE_API_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD) is created by deploy.sh,
+# never committed to git.

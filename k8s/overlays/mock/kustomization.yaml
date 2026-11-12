@@ -1,0 +1,18 @@
+# Demo overlay: run the stack with the MOCK model services (no trained models needed).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [../../base]
+images:
+  - { name: rdcp-ml, newName: rdcp-mock-models, newTag: "1.0" }
+  - { name: rdcp-dl, newName: rdcp-mock-models, newTag: "1.0" }
+  - { name: rdcp-qml, newName: rdcp-mock-models, newTag: "1.0" }
+patches:
+  - target: { kind: Deployment, name: ml }
+    patch: |-
+      - { op: add, path: /spec/template/spec/containers/0/env/-, value: { name: MODEL_NAME, value: ml } }
+  - target: { kind: Deployment, name: dl }
+    patch: |-
+      - { op: add, path: /spec/template/spec/containers/0/env/-, value: { name: MODEL_NAME, value: dl } }
+  - target: { kind: Deployment, name: qml }
+    patch: |-
+      - { op: add, path: /spec/template/spec/containers/0/env/-, value: { name: MODEL_NAME, value: qml } }

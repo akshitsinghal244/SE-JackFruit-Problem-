@@ -1,0 +1,5 @@
+# Swap the real model services for mocks (same API) - for demos before the models are trained.
+services:
+  ml:  { build: { context: ./mock-models, dockerfile: Dockerfile }, environment: { MODEL_NAME: ml } }
+  dl:  { build: { context: ./mock-models, dockerfile: Dockerfile }, environment: { MODEL_NAME: dl } }
+  qml: { build: { context: ./mock-models, dockerfile: Dockerfile }, environment: { MODEL_NAME: qml } }
