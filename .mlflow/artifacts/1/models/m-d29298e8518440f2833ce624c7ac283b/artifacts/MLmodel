@@ -1,0 +1,39 @@
+artifact_path: mlflow-artifacts:/1/models/m-d29298e8518440f2833ce624c7ac283b/artifacts
+flavors:
+  python_function:
+    artifacts:
+      bundle:
+        path: artifacts/dl
+        uri: /Users/arvind/Documents/Sem5/SE/SE-JackFruit-Problem-/services/artifacts/dl
+    cloudpickle_version: 3.1.2
+    code: code
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pyfunc.model
+    python_model: python_model.pkl
+    python_version: 3.12.16
+    streamable: false
+is_signature_from_type_hint: false
+mlflow_version: 3.18.0
+model_id: m-d29298e8518440f2833ce624c7ac283b
+model_size_bytes: 70350
+model_uuid: m-d29298e8518440f2833ce624c7ac283b
+prompts: null
+run_id: 3bd98a8788a1426585f6edc61ebd8e40
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "long", "name": "store_id", "required": true}, {"type": "long",
+    "name": "item_id", "required": true}, {"type": "string", "name": "date", "required":
+    true}, {"type": "array", "items": {"type": "long"}, "name": "prev_sales", "required":
+    true}]'
+  outputs: '[{"type": "string", "name": "category", "required": true}, {"type": "double",
+    "name": "p_low", "required": true}, {"type": "double", "name": "p_medium", "required":
+    true}, {"type": "double", "name": "p_high", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-11-12 17:07:34.718640'

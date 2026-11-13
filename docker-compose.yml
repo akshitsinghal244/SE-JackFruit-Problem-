@@ -27,6 +27,9 @@ services:
 
   client:
     build: ./client
+    depends_on:
+      gateway:
+        condition: service_healthy
     environment: { API_UPSTREAM: "gateway:8000" }
     networks: [public]
     healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/nginx-health"], interval: 10s, timeout: 3s, retries: 6 }

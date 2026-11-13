@@ -1,0 +1,140 @@
+{
+  "dataset": "train.csv",
+  "data_range": [
+    "2013-01-01",
+    "2017-12-31"
+  ],
+  "split": {
+    "val_start": "2017-07-01",
+    "test_start": "2017-10-01",
+    "end": "2017-12-31"
+  },
+  "known_stores": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "known_items": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+  ],
+  "label_rule": "Low/Medium/High = tertiles of daily sales per store-item, fitted on data before test_start",
+  "prev_sales_order": "oldest_to_newest (prev_sales[6] is the day before `date`)",
+  "service": "qml",
+  "algorithm": "VQC (4 qubits, 3 StronglyEntangling layers, default.qubit simulator)",
+  "version": "vqc4q-20261112",
+  "classes": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "inputs": "12 tabular features -> standardise -> PCA(4) -> [0, pi] -> RY angle encoding",
+  "pca_explained_variance": 0.854,
+  "readout": "softmax(scale * <Z_q> + bias) for qubits 0,1,2 = Low, Medium, High",
+  "best_validation_macro_f1": 0.4406,
+  "test_metrics": {
+    "accuracy": 50.1,
+    "macro_f1": 0.4852,
+    "confusion_matrix": [
+      [
+        289,
+        296,
+        148
+      ],
+      [
+        228,
+        449,
+        483
+      ],
+      [
+        117,
+        225,
+        765
+      ]
+    ]
+  },
+  "baseline_test_metrics": {
+    "accuracy": 47.63,
+    "macro_f1": 0.4749,
+    "confusion_matrix": [
+      [
+        338,
+        245,
+        150
+      ],
+      [
+        304,
+        511,
+        345
+      ],
+      [
+        113,
+        414,
+        580
+      ]
+    ]
+  },
+  "n_train": 1500,
+  "n_test": 3000,
+  "hyperparameters": {
+    "epochs_max": 15,
+    "batch_size": 32,
+    "lr": 0.03
+  },
+  "trained_on": "2026-11-12"
+}

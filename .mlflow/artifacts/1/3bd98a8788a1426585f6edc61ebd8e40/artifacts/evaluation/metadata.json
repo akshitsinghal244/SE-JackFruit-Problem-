@@ -1,0 +1,139 @@
+{
+  "dataset": "train.csv",
+  "data_range": [
+    "2013-01-01",
+    "2017-12-31"
+  ],
+  "split": {
+    "val_start": "2017-07-01",
+    "test_start": "2017-10-01",
+    "end": "2017-12-31"
+  },
+  "known_stores": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "known_items": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+  ],
+  "label_rule": "Low/Medium/High = tertiles of daily sales per store-item, fitted on data before test_start",
+  "prev_sales_order": "oldest_to_newest (prev_sales[6] is the day before `date`)",
+  "service": "dl",
+  "algorithm": "LSTM (7 steps) + store/item embeddings",
+  "version": "lstm-20261112",
+  "classes": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "inputs": "log1p + standardised 7-day sequence (oldest->newest), store embedding (4), item embedding (8)",
+  "best_validation_macro_f1": 0.4456,
+  "test_metrics": {
+    "accuracy": 57.37,
+    "macro_f1": 0.5714,
+    "confusion_matrix": [
+      [
+        5694,
+        4460,
+        1139
+      ],
+      [
+        3350,
+        9415,
+        5144
+      ],
+      [
+        540,
+        4978,
+        11280
+      ]
+    ]
+  },
+  "baseline_test_metrics": {
+    "accuracy": 47.18,
+    "macro_f1": 0.4693,
+    "confusion_matrix": [
+      [
+        4986,
+        3785,
+        2522
+      ],
+      [
+        4654,
+        7687,
+        5568
+      ],
+      [
+        1568,
+        6199,
+        9031
+      ]
+    ]
+  },
+  "n_train": 817500,
+  "n_test": 46000,
+  "hyperparameters": {
+    "epochs_max": 15,
+    "batch_size": 512,
+    "lr": 0.001,
+    "patience": 3
+  },
+  "trained_on": "2026-11-12"
+}
